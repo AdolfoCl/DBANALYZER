@@ -16,9 +16,25 @@ C SYMBOL/DBANALYZER AS DBANALYZER WITH DMALGOL
 
 From CANDE:
 ```
-RUN DBANALYZER;FILE DASDL = <DESCRIPTION FILE TITLE>
+RUN DBANALYZER;FILE DASDL(TITLE = <DESCRIPTION FILE TITLE>)
 ```
 
-Adaptado de GREGORY'S A-SERIES TECHNICAL JOURNAL
-VOLUMEN 2, NUMERO 7      AGOSTO DE 1988
-PAG 261  "EXPLORING DMSII WITH COBOL"
+## Results
+The following is the generated report format
+```
+SDSANAL                                            * STANDARD DATASET ANALYSIS *                                 22/06/2018 18:41:02 
+DATA BASE:  TVPRGDRB             UPDATE LEVEL   3                                                                           PAGE   1 
+                 STR                      FILE SIZE   .....A R E A S......   ......RECORD SPACES.......      ACTIVE       DASDL    % 
+DATA SET NAME    NUM   FAMILY NAME        (SECTORS)   ALLOWED  IN USE   %    ALLOCATED    DELETED    %      RECORDS       POPUL.  SAT
+-------------    ---   -----------        ---------   --------------------   --------------------------     -------     --------  ---
+ABOCO             27                            520       2        1  50.0           0          0                 0        3,000  0.0
+ACTA              28                          1,003      16        1   6.2           0          0                 0        5,000  0.0
+AFDEC             30                          1,005     502        1   0.1           0          0                 0    1,000,000  0.0
+AGINS             31                          1,007     127        1   0.7           0          0                 0      300,000  0.0
+...
+```
+
+## Credits
+Adapted from **GREGORY'S A-SERIES TECHNICAL JOURNAL**
+VOLUME 2, NUMBER 7      AUGOST, 1988
+PAGE 261  **"EXPLORING DMSII WITH COBOL"**
