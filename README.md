@@ -2,8 +2,7 @@
 
 ## STANDARD DATA SET ANALYSIS REPORT
 
-Genera un reporte impreso mostrando los registros activos y borrados y la utilizacion del espacio en disco para todos 
- los data sets standard en una base de datos DMSII del Sistema Operativo MCP de UNISYS.
+It generates a printed report showing the active and deleted records and the use of disk space for all standard data sets in a DMSII database of the UNISYS MCP Operating System.
  
 ## How to compile
 
