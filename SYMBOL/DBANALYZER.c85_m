@@ -1,0 +1,767 @@
+000100$SET LIST SINGLE ERRORLIST MAP SET BINARYCOMP                                 
+000200$LIST FEDLEVEL=5 ERRORLIMIT=999                                               
+000300 IDENTIFICATION DIVISION.                                                     
+000400 PROGRAM-ID. SDSANAL.                                                         
+000500* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+000600*              STANDARD DATA SET ANALYSIS REPORT                 *            
+000700*  PRODUCE UN REPORTE IMPRESO MOSTRANDO LOS REGISTROS ACTIVOS    *            
+000800*  Y BORRADOS Y LA UTILIZACION DEL ESPACIO EN DISCO PARA TODOS   *            
+000900*  LOS DATA SETS STANDARD EN UNA BASE DE DATOS DMSII DADA.       *            
+001000*  EL ARCHIVO DE DESCRIPCION DE LA BASE DE DATOS DEBERIA SER     *            
+001100*  ECUACIONADA CON LA SINTAXIS WFL: "FILE DASDL = <DESC. TITLE>;"*            
+001200*                                                                *            
+001300*       ADAPTADO DEL GREGORY'S A-SERIES TECHNICAL JOURNAL        *            
+001400*           VOLUME2 2, NUMERO 7      AGOSTO DE 1988              *            
+001500*           PAG 261  "EXPLORING DMSII WITH COBOL"                *            
+001600* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+001700*                                                                             
+001800 ENVIRONMENT DIVISION.                                                        
+001900 INPUT-OUTPUT SECTION.                                                        
+002000 FILE-CONTROL.                                                                
+002100     SELECT DASDL                                                             
+002200        ASSIGN TO DISK                                                        
+002300        ACCESS IS RANDOM                                                      
+002400        ACTUAL KEY IS DFKEY.                                                  
+002500*                                                                             
+002600     SELECT INFOFILE                                                          
+002700        ASSIGN TO DISK.                                                       
+002800*                                                                             
+002900     SELECT SRT                                                               
+003000        ASSIGN TO SORT DISK.                                                  
+003100*                                                                             
+003200     SELECT DATASET                                                           
+003300        ASSIGN TO DISK                                                        
+003400        ACCESS IS RANDOM                                                      
+003500        ACTUAL KEY IS LASTREC.                                                
+003600*                                                                             
+003700     SELECT PRINT                                                             
+003800        ASSIGN TO PRINTER.                                                    
+003900$PAGE                                                                         
+004000 DATA DIVISION.                                                               
+004100 FILE SECTION.                                                                
+004200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+004300*             EL ARCHIVO DE DESCRIPTION DE LA BASE               *            
+004400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+004500*                                                                             
+004600 FD  DASDL                                                                    
+004700     BLOCK CONTAINS 1 RECORDS.                                                
+004800*                                                                             
+004900 01  DASDL-REC.                                                               
+005000     02  DF-WORD     OCCURS 256 TIMES                                         
+005100                     INDEXED BY DFWIX PIC S9(11) BINARY EXTENDED.             
+005200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+005300 01  DASDL-CHAR-REC.                                                          
+005400     02  DF-CHAR     OCCURS 1536 TIMES                                        
+005500                     INDEXED BY DFCIX PIC X(01).                              
+005600*                                                                             
+005700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+005800*                      WORK FILE                                 *            
+005900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+006000*                                                                             
+006100 FD  INFOFILE                                                                 
+006200     BLOCK CONTAINS 60 RECORDS                                                
+006300     VALUE OF TITLE "SDSANAL/WORK"                                            
+006400              AREAS 1000                                                      
+006500              AREASIZE 840                                                    
+006600              SAVEFACTOR 2.                                                   
+006700*                                                                             
+006800 01  INFO-REC.                                                                
+006900     02  IR-DATASET-NAME          PIC X(17).                                  
+007000     02  IR-DATASET-TITLE         PIC X(70).                                  
+007100     02  IR-RECSIZEINWORDS        PIC 9(04) COMP.                             
+007200     02  IR-BLKSIZEINRECS         PIC 9(04) COMP.                             
+007300     02  IR-AREAS-ALLOWED         PIC 9(04) COMP.                             
+007400     02  IR-POPULATION            PIC 9(08) COMP.                             
+007500     02  IR-STRUCTURE-NUM         PIC 9(04) COMP.                             
+007600     02  FILLER                   PIC X(09).                                  
+007700                                                                              
+007800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+007900*  EL WORK FILE Y EL REPORTE SE ORDENARAN ALFABETICAMENTE POR    *            
+008000*  NOMBRE DEL DATA SET.                                          *            
+008100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+008200*                                                                             
+008300 SD  SRT.                                                                     
+008400 01  SRT-REC.                                                                 
+008500     02  SRT-FLD                  PIC X(17).                                  
+008600     02  FILLER                   PIC X(91).                                  
+008700                                                                              
+008800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+008900*  ESTE ARCHIVO SE UTILIZA PARA ABRIR EL ARCHIVO DEL DATA SET    *            
+009000*  COMO UN ARCHIVO PLANO Y LEERLE EL ULTIMO REGISTRO.            *            
+009100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+009200*                                                                             
+009300 FD  DATASET                                                                  
+009400     BLOCK CONTAINS 1 RECORDS                                                 
+009500     VALUE OF SAVEFACTOR 999.                                                 
+009600*                                                                             
+009700 01  DATASET-REC.                                                             
+009800     02  DKNUM                    PIC S9(11) BINARY EXTENDED.                 
+009900     02  DATAEOF                  PIC S9(11) BINARY EXTENDED.                 
+010000     02  DKBASE                   PIC S9(11) BINARY EXTENDED.                 
+010100     02  DKI                      PIC S9(11) BINARY EXTENDED.                 
+010200     02  FILLER                   PIC X(156).                                 
+010300                                                                              
+010400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+010500*      REPORTE DEL ANALISIS DEL DATA SET ESTANDARD               *            
+010600* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+010700*                                                                             
+010800 FD  PRINT                                                                    
+010900     VALUE OF TITLE "SDSANAL".                                                
+011100 01  PRT-LN.                                                                  
+011200     02  P-DATASET-NAME           PIC X(16).                                  
+011300     02  P-STRUCTURE-NUM          PIC ZZZ9.                                   
+011400     02  FILLER                   PIC X(02).                                  
+011500     02  P-FAMILY-NAME            PIC X(18).                                  
+011600     02  P-SECTORS                PIC ZZZ,ZZZ,ZZ9.                            
+011700     02  FILLER                   PIC X(01).                                  
+011800     02  P-AREAS-ALLOWED          PIC Z(6)9.                                  
+011900     02  P-AREAS-INUSE            PIC Z(8)9.                                  
+012000     02  P-AREAS-PCENT            PIC ZZZ9.9.                                 
+012100     02  P-RECS-ALLOCATED         PIC ZZZZ,ZZZ,ZZ9.                           
+012200     02  P-RECS-DELETED           PIC ZZZ,ZZZ,ZZ9.                            
+012300     02  P-DELETED-PCENT          PIC ZZZ9.9.                                 
+012400     02  P-RECS-ACTIVE            PIC ZZZZ,ZZZ,ZZ9.                           
+012500     02  P-DASDL-POPULATION       PIC ZZZZZ,ZZZ,ZZ9.                          
+012600     02  P-DASDL-SATURACION       PIC ZZ9.9.                                  
+012700*****02  FILLER                   PIC X(01).                                  
+012800$PAGE                                                                         
+012900 WORKING-STORAGE SECTION.                                                     
+013000 77  LASTREC                      PIC S9(11) BINARY EXTENDED.                 
+013100 77  WS-SATURACION                PIC S9(11) BINARY EXTENDED.                 
+013150 77  WS-AREAS-PCENT               PIC S9(11) BINARY EXTENDED.                 
+013200 77  PG-CNT                       PIC  9(03) BINARY.                          
+013300 77  LN-CNT                       PIC  9(04) BINARY.                          
+013400 77  MAXLINES                     PIC  9(04) BINARY VALUE 78.                 
+013500 77  EOF                          PIC  9     BINARY.                          
+013600 77  NUMBLOCKS                    PIC S9(11) BINARY EXTENDED.                 
+013700 77  FULLSEGS                     PIC S9(11) BINARY EXTENDED.                 
+013800 77  LASTSEG                      PIC S9(11) BINARY EXTENDED.                 
+013900 77  ACTIVERECS                   PIC S9(11) BINARY EXTENDED.                 
+014000 77  DELETEDRECS                  PIC S9(11) BINARY EXTENDED.                 
+014100 77  REMN                         PIC S9(11) BINARY EXTENDED.                 
+014200 77  DFKEY                        PIC S9(11) BINARY EXTENDED.                 
+014300 77  TYPEF                        PIC S9(11) BINARY EXTENDED.                 
+014400 77  SUBTYPEF                     PIC S9(11) BINARY EXTENDED.                 
+014500 77  NAMELEN                      PIC S9(11) BINARY EXTENDED.                 
+014600 77  DBNAME-LEN                   PIC S9(11) BINARY EXTENDED.                 
+014700 77  SUB1                         PIC S9(11) BINARY EXTENDED.                 
+014800 77  SUB2                         PIC S9(11) BINARY EXTENDED.                 
+014900 77  ANUMBER                      PIC S9(11) BINARY EXTENDED.                 
+015000 77  STRLIST-BLOCK                PIC S9(11) BINARY EXTENDED.                 
+015100 77  STRLIST-WORD                 PIC S9(11) BINARY EXTENDED.                 
+015200 77  STR-COUNT                    PIC S9(11) BINARY EXTENDED.                 
+015300 77  TEXTBASE                     PIC S9(11) BINARY EXTENDED.                 
+015400 77  TEXTOFFSET                   PIC S9(11) BINARY EXTENDED.                 
+015500 77  STRING-END                   PIC S9(11) BINARY EXTENDED.                 
+015600 77  WS-AREAS                     PIC S9(11) BINARY EXTENDED.                 
+015700 77  WS-AREASIZE                  PIC S9(11) BINARY EXTENDED.                 
+015800 77  WS-ACTIVE                    PIC S9(11) BINARY EXTENDED.                 
+015900 77  WS-TOTAL-SECTORS             PIC S9(11) BINARY EXTENDED.                 
+016000 77  WS-TOTAL-RECORDS             PIC S9(11) BINARY EXTENDED.                 
+016100 77  WS-HYPHEN-CNT                PIC  9(02) BINARY.                          
+016200 77  DISP-NUM                     PIC ZZZ9.                                   
+016220 77  PASO                         PIC 9(8).                                   
+016240 77  PASO1                        PIC 9(8).                                   
+016300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+016400 01  WS-TIME                      PIC  9(08).                                 
+016500 01  HH-MM-SS-TT REDEFINES WS-TIME.                                           
+016600     02  HH-MM-SS.                                                            
+016700         03 HH-T                  PIC  9(02).                                 
+016800         03 MM-T                  PIC  9(02).                                 
+016900         03 SS-T                  PIC  9(02).                                 
+017000     02  FILLER                   PIC  X(02).                                 
+017100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+017200*                  TABLA DE DIRECTORIO DE BLOQUES                *            
+017300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+017400 01  BLOCK-DIRECTORY-TABLE.                                                   
+017500     02  BD-ENTRY                 OCCURS 500 TIMES                            
+017600                                  INDEXED BY BDIX.                            
+017700         03  BD-START-REC         PIC 9(04) COMP.                             
+017800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+017900*   TABLA DE POSICIONES (BLOQUE/WORD) DE LAS PROPIEDADES DE LAS  *            
+018000*   ESTRUCTURAS.                                                 *            
+018100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+018200 01  STRUCTURE-TABLE.                                                         
+018300     02  STRUCTURE-INFO           OCCURS 1 TO 1000 TIMES                      
+018400                                  DEPENDING ON STR-COUNT                      
+018500                                  INDEXED BY STRIX.                           
+018600         03  STR-PROP-BLOCK       PIC 9(04) COMP.                             
+018700         03  STR-PROP-WORD        PIC 9(04) COMP.                             
+018800*                                                                             
+018900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+019000*         AREA DE PARSING PARA LAS PROPERTIES                    *            
+019100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+019200 01  PROPERTIES-AREA.                                                         
+019300     02  PROP-WORD                OCCURS  40 TIMES                            
+019400                                  INDEXED BY PWRDIX                           
+019500                                  PIC S9(11) BINARY EXTENDED.                 
+019600 01  PROPERTY-CHARACTERS REDEFINES PROPERTIES-AREA.                           
+019700     02  PROP-CHAR                OCCURS 240 TIMES                            
+019800                                  INDEXED BY PCHRIX                           
+019900                                  PIC X(01).                                  
+020000* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+020100*                AREA DE ALMACENAMIENTO PARA STRING              *            
+020200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+020300 01  CHAR-STRING-AREA.                                                        
+020400     02  CSA-CHAR                 OCCURS 20 TIMES                             
+020500                                  INDEXED BY CHARIX                           
+020600                                  PIC X(01).                                  
+020700 01  FILE-TITLE.                                                              
+020800     02  FT-CHAR                  OCCURS 80 TIMES                             
+020900                                  INDEXED BY FTCIX                            
+021000                                  PIC X(01).                                  
+021100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+021200 01  ON-LITERAL                   PIC X(04) VALUE " ON ".                     
+021300 01  ON-LIT-CHARS REDEFINES ON-LITERAL.                                       
+021400     02  OL-CHAR                  OCCURS 4 TIMES                              
+021500                                  INDEXED BY OLCIX                            
+021600                                  PIC X(01).                                  
+021700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+021800 01  DBNAME.                                                                  
+021900     02  DBNAME-CHAR              OCCURS 17 TIMES                             
+022000                                  INDEXED BY DBCIX                            
+022100                                  PIC X(01).                                  
+022200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+022300*                    TITULOS DE IMPRESION                        *            
+022400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+022500*                                                                             
+022600 01  HD1.                                                                     
+022700     02  FILLER                   PIC X(40) VALUE                             
+022800         "SDSANAL                                 ".                          
+022900     02  FILLER                   PIC X(40) VALUE                             
+023000         "           * STANDARD DATASET ANALYSIS *".                          
+023100     02  FILLER                   PIC X(35) VALUE SPACES.                     
+023200     02  HD1-DATE                 PIC Z9/99/99.                               
+023300     02  HD1-TIME                 PIC Z99.                                    
+023400     02  FILLER                   PIC X VALUE ":".                            
+023500     02  HD1-MIN                  PIC 99.                                     
+023600     02  FILLER                   PIC X VALUE ":".                            
+023700     02  HD1-SEG                  PIC 99.                                     
+023800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+023900 01  HD2.                                                                     
+024000     02  FILLER                   PIC X(12) VALUE "DATA BASE:  ".             
+024100     02  HD2-DB-NAME              PIC X(21).                                  
+024200     02  FILLER                   PIC X(12) VALUE "UPDATE LEVEL".             
+024300     02  HD2-UPDATE-LEVEL         PIC ZZZ9.                                   
+024400     02  FILLER                   PIC X(75) VALUE SPACES.                     
+024500     02  FILLER                   PIC X(05) VALUE "PAGE ".                    
+024600     02  HD2-PG-NO                PIC ZZ9.                                    
+024700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+024800 01  HD3.                                                                     
+024900     02  FILLER                   PIC X(40) VALUE                             
+025000         "                 STR                    ".                          
+025100     02  FILLER                   PIC X(40) VALUE                             
+025200         "  FILE SIZE   .....A R E A S......   ...".                          
+025300     02  FILLER                   PIC X(40) VALUE                             
+025400         "...RECORD SPACES.......      ACTIVE     ".                          
+025500     02  FILLER                   PIC X(13) VALUE                             
+025600         "  DASDL    % ".                                                     
+025700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+025800 01  HD4.                                                                     
+025900     02  FILLER                   PIC X(40) VALUE                             
+026000         "DATA SET NAME    NUM   FAMILY NAME      ".                          
+026100     02  FILLER                   PIC X(40) VALUE                             
+026200         "  (SECTORS)   ALLOWED  IN USE   %    ALL".                          
+026300     02  FILLER                   PIC X(40) VALUE                             
+026400         "OCATED    DELETED    %      RECORDS     ".                          
+026500     02  FILLER                   PIC X(13) VALUE                             
+026600         "  POPUL.  SAT".                                                     
+026700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+026800 01  HD5.                                                                     
+026900     02  FILLER                   PIC X(40) VALUE                             
+027000         "-------------    ---   -----------      ".                          
+027100     02  FILLER                   PIC X(40) VALUE                             
+027200         "  ---------   --------------------   ---".                          
+027300     02  FILLER                   PIC X(40) VALUE                             
+027400         "-----------------------     -------     ".                          
+027500     02  FILLER                   PIC X(13) VALUE                             
+027600         "--------  ---".                                                     
+027700 01  TR1.                                                                     
+027800     02  FILLER                   PIC X(40) VALUE SPACES.                     
+027900     02  FILLER                   PIC X(40) VALUE                             
+028000         "  ---------                             ".                          
+028100     02  FILLER                   PIC X(24) VALUE SPACES.                     
+028200     02  FILLER                   PIC X(12) VALUE                             
+028300         "  --------- ".                                                      
+028400     02  FILLER                   PIC X(16) VALUE SPACES.                     
+028500 01  TR2.                                                                     
+028600     02  FILLER                   PIC X(39) VALUE                             
+028700         "                                TOTAL: ".                           
+028800     02  TR2-TOTAL-SECTORS        PIC ZZZZ,ZZZ,ZZ9.                           
+028900     02  FILLER                   PIC X(45) VALUE SPACES.                     
+029000     02  FILLER                   PIC X(07) VALUE "TOTAL: ".                  
+029100     02  TR2-TOTAL-RECORDS        PIC ZZZZ,ZZZ,ZZ9.                           
+029200     02  FILLER                   PIC X(17) VALUE SPACES.                     
+029300*-----------------------------------------------------------------            
+029400$PAGE                                                                         
+029500 PROCEDURE DIVISION.                                                          
+029600 MAINLINE.                                                                    
+029700     PERFORM GET-DASDL-INFO-SECTION.                                          
+029800     SORT SRT                                                                 
+029900         ON ASCENDING KEY SRT-FLD                                             
+030000         USING  INFOFILE                                                      
+030100         GIVING INFOFILE.                                                     
+030200     PERFORM PRODUCE-REPORT-SECTION.                                          
+030300     STOP RUN.                                                                
+030400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+030500*  ABRE EL ARCHIVO DE DESCRIPTION DE LA BASE. OBTIENE LOS        *            
+030600*  ATRIBUTOS FISICOS DE CADA DATA SET ESTANDARD DE FORMATO FIJO, *            
+030700*  Y ESCRIBE UN REGISTRO PARA CADA UNO EN EL WORK FILE.          *            
+030800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+030900 GET-DASDL-INFO-SECTION.                                                      
+031000     OPEN INPUT DASDL                                                         
+031100          OUTPUT INFOFILE.                                                    
+031200     PERFORM LOAD-BLOCK-DIRECTORY.                                            
+031300     PERFORM LOAD-DB-PROPS.                                                   
+031400     PERFORM PROCESS-DB-PROPS.                                                
+031500     CLOSE DASDL.                                                             
+031600     CLOSE INFOFILE WITH SAVE.                                                
+031700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+031800*  CARGA LA TABLA DE DIRECTORIO DE BLOQUES CON SEGMENTO/OFFSET   *            
+031900*  PARA REFERENCIAR A CADA BLOQUE LOGICO EN EL ARCHIVO DE        *            
+032000*  DESCRIPTION DE LA BASE.                                       *            
+032100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+032200 LOAD-BLOCK-DIRECTORY.                                                        
+032300     MOVE 1 TO DFKEY.                                                         
+032400     PERFORM READ-DESC-FILE.                                                  
+032500     MOVE DF-WORD (4) TO SUB1 [31:15:16].                                     
+032600     ADD 1 TO SUB1.                                                           
+032700***      SUB1 = DIRECCION DE PARTIDA DEL DIRECTORIO DE BLOQUES                
+032800     MOVE DF-WORD (4) TO SUB2 [15:15:16].                                     
+032900     SUBTRACT 2 FROM SUB2.                                                    
+033000***      SUB2 = NUMERO DE BLOQUES EN EL ARCHIVO,                              
+033100***             EXCEPTO EL BLOQUE CERO.                                       
+033200     SET DFWIX TO SUB1.                                                       
+033300     SET DFWIX UP BY 1.                                                       
+033400***      DFWIX APUNTA AHORA AL DIRECTORIO PARA EL BLOQUE 1.                   
+033500     MOVE HIGH-VALUES TO BLOCK-DIRECTORY-TABLE.                               
+033600     SET BDIX TO 1.                                                           
+033700     PERFORM LOAD-BLOCK-DIR-ENTRY                                             
+033800         UNTIL BDIX > SUB2.                                                   
+033900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+034000 LOAD-BLOCK-DIR-ENTRY.                                                        
+034100     MOVE DF-WORD (DFWIX) TO ANUMBER [11:11:12].                              
+034200     ADD 1 TO ANUMBER.                                                        
+034300     MOVE ANUMBER TO BD-START-REC (BDIX).                                     
+034400     PERFORM GET-NEXT-WORD.                                                   
+034500     SET BDIX UP BY 1.                                                        
+034600* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+034700*  CARGA LAS PROPIEDADES DE LA BASE DE DATOS EN EL AREA DE       *            
+034800*  TRABAJO.                                                      *            
+034900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+035000 LOAD-DB-PROPS.                                                               
+035100     MOVE LOW-VALUES TO PROPERTIES-AREA.                                      
+035200***      OBTIENE EL COMIENZO DE LAS PROPIEDADES DE LA BD                      
+035300     MOVE 1 TO DFKEY.                                                         
+035400     PERFORM READ-DESC-FILE.                                                  
+035500     MOVE DF-WORD (8) TO ANUMBER [47:15:16].                                  
+035600***      ANUMBER = NUMERO DE BLOCUQE DONDE ESTAN LAS PROPIEDADES              
+035700     MOVE BD-START-REC (ANUMBER) TO DFKEY                                     
+035800***      DFKEY = REGISTRO FISICO DONDE COMIENZA EL BLOQUE                     
+035900     MOVE DF-WORD (8) TO SUB1 [15:15:16].                                     
+036000     ADD 1 TO SUB1.                                                           
+036100***      SUB1 = NUMERO DE PALABRA EN DONDE COMIENZA LA PROPERTIES             
+036200***    AHI ES DONDE CAPTURAREMOS LA UBICACION DE LA LISTA DE                  
+036300***    ESTRUCTURAS                                                            
+036400     MOVE ANUMBER TO STRLIST-BLOCK                                            
+036500     MOVE DF-WORD (8) TO STRLIST-WORD [31:15:16].                             
+036600     PERFORM READ-DESC-FILE.                                                  
+036700     SET DFWIX TO 1.                                                          
+036800     COMPUTE ANUMBER = SUB1 - 1.                                              
+036900     PERFORM GET-NEXT-WORD ANUMBER TIMES.                                     
+037000***      AHORA DFWIX APUNTA A LA PRIMERA PALABRA DE LAS DB PROPS              
+037100     SET PWRDIX TO 1.                                                         
+037200     PERFORM MOVE-PROPERTY-WORD                                               
+037300        UNTIL PWRDIX > 20.                                                    
+037400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+037500*  MUEVE UN CONJUNTO DE PROPIEDADES EN EL AREA DE TRABAJO, UNA   *            
+037600*  PALABRA POR VEZ                                               *            
+037700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+037800 MOVE-PROPERTY-WORD.                                                          
+037900     MOVE DF-WORD (DFWIX) TO PROP-WORD (PWRDIX).                              
+038000     PERFORM GET-NEXT-WORD.                                                   
+038100     SET PWRDIX UP BY 1.                                                      
+038200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+038300*  LEE UN REGISTRO FISICO (256-WORD) DESDE EL ARCHIVO DE DESCRIP-*            
+038400*  CION. EL REGISTRO LEIDO DEPENDE DEL VALOR DE DFKEY.           *            
+038500* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+038600 READ-DESC-FILE.                                                              
+038700     READ DASDL                                                               
+038800        INVALID KEY                                                           
+038900          DISPLAY "INVALID KEY READ DESCRIPTION FILE"                         
+039000          DISPLAY "FILE KEY = " DFKEY                                         
+039100          COMPUTE DFKEY = DFKEY / 0.                                          
+039200*                                                                             
+039300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+039400*  ACCESA A LA SIGUIENTE PALABRA DESDE ARCHIVO DE DESCRIPCION.   *            
+039500*  SI LA SGUIENTE PALABRA ESTA EN EL SIGUIENTE REGISTRO FISICO,  *            
+039600*  LO LEE.                                                       *            
+039700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+039800 GET-NEXT-WORD.                                                               
+039900     SET DFWIX UP BY 1.                                                       
+040000     IF DFWIX > 256                                                           
+040100        ADD 1 TO DFKEY                                                        
+040200        PERFORM READ-DESC-FILE                                                
+040300        SET DFWIX TO 1.                                                       
+040400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+040500*  OBTIENE DESDE EL PROPERTIES DE LA BASE DE DATOS: EL NOMBRE DE *            
+040600*  LA BASE Y EL NIVEL DE UPDATE.                                 *            
+040700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+040800 PROCESS-DB-PROPS.                                                            
+040900     MOVE SPACES TO CHAR-STRING-AREA.                                         
+041000     SET CHARIX TO 1.                                                         
+041100     MOVE PROP-WORD (3) TO DBNAME-LEN [47:07:08].                             
+041200     SET PCHRIX TO 14.                                                        
+041300     PERFORM MOVE-IDENTIFIER-CHAR                                             
+041400         UNTIL CHARIX > DBNAME-LEN.                                           
+041500     MOVE CHAR-STRING-AREA TO DBNAME.                                         
+041600     MOVE PROP-WORD (16) TO ANUMBER [47:19:20].                               
+041700     MOVE ANUMBER TO DISP-NUM.                                                
+041800     DISPLAY DBNAME, ": UPDATE LEVEL" DISP-NUM.                               
+041900     MOVE DBNAME TO HD2-DB-NAME.                                              
+042000     MOVE ANUMBER TO HD2-UPDATE-LEVEL.                                        
+042100     MOVE 0 TO ANUMBER.                                                       
+042200     PERFORM PROCESS-STRUCTURE-LIST.                                          
+042300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+042400 MOVE-IDENTIFIER-CHAR.                                                        
+042500     MOVE PROP-CHAR (PCHRIX) TO CSA-CHAR (CHARIX).                            
+042600     SET PCHRIX, CHARIX UP BY 1.                                              
+042700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+042800*  SIGUE LOS PUNTEROS EN LA LISTA DE ESTRUCTURAS Y CARGA LA TABLA*            
+042900*  DE S~ESTRUCTURAS CON LOS PUNTEROS AL COMIENZO DE LAS PROPIE-  *            
+043000*  DADES DE CADA ESTRUCTURA.                                     *            
+043100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+043200 PROCESS-STRUCTURE-LIST.                                                      
+043300     PERFORM LOAD-STRUCTURE-TABLE.                                            
+043400     PERFORM PROCESS-A-STRUCTURE                                              
+043500        VARYING STRIX FROM 2 BY 1                                             
+043600           UNTIL STRIX > STR-COUNT.                                           
+043700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+043800 LOAD-STRUCTURE-TABLE.                                                        
+043900     MOVE BD-START-REC (STRLIST-BLOCK) TO DFKEY.                              
+044000     PERFORM READ-DESC-FILE.                                                  
+044100     SET DFWIX TO 1.                                                          
+044200     PERFORM GET-NEXT-WORD  STRLIST-WORD TIMES.                               
+044300***      DFWIX POINTS TO FIRST WORD OF STRUCTURE LIST                         
+044400     MOVE DF-WORD (DFWIX) TO  STR-COUNT.                                      
+044500     MOVE LOW-VALUES TO STRUCTURE-TABLE.                                      
+044600     PERFORM MOVE-STR-LOC-INFO                                                
+044700         VARYING STRIX FROM 1 BY 1                                            
+044800             UNTIL STRIX > STR-COUNT.                                         
+044900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+045000 MOVE-STR-LOC-INFO.                                                           
+045100     PERFORM GET-NEXT-WORD.                                                   
+045200     MOVE DF-WORD (DFWIX) TO ANUMBER [47:15:16].                              
+045300     MOVE ANUMBER TO STR-PROP-BLOCK (STRIX).                                  
+045400     MOVE DF-WORD (DFWIX) TO ANUMBER [15:15:16].                              
+045500     MOVE ANUMBER TO STR-PROP-WORD (STRIX).                                   
+045600* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+045700*  CARGA LAS PROPIEDADES PARA LA ESTRUCTURA EN EL AREA DE TRABAJO*            
+045800*  DETERMINA DE LOS CAMPOS TYPEF Y SUBTYPEF CUANDO SE TRATA DE   *            
+045900*  LAS PROPIEDADES DE UN DATA SET ESTANDARD DE FORMATO FIJO.     *            
+046000* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+046100 PROCESS-A-STRUCTURE.                                                         
+046200     SET SUB1 TO STRIX.                                                       
+046300     PERFORM LOAD-STRUCTURE-PROPERTIES.                                       
+046400     MOVE PROP-WORD (2) TO TYPEF [07:07:08].                                  
+046500     MOVE PROP-WORD (2) TO SUBTYPEF [35:03:04].                               
+046600     IF TYPEF = 2                                                             
+046700       IF SUBTYPEF = 0                                                        
+046800         MOVE 0 TO ANUMBER                                                    
+046900         MOVE PROP-WORD (19) TO ANUMBER [37:00:01]                            
+047000**             ANUMBER = RESTARTDATASETF                                      
+047100         IF ANUMBER = 0                                                       
+047200            MOVE PROP-WORD (13) TO ANUMBER [46:00:01]                         
+047300**             (RECORDTYPEF--VARIABLE-FORMAT  FLAG)                           
+047400            IF ANUMBER = 0                                                    
+047500               PERFORM PROCESS-DATASET-PROPERTIES.                            
+047600* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+047700 LOAD-STRUCTURE-PROPERTIES.                                                   
+047800     MOVE STR-PROP-BLOCK (STRIX) TO SUB1.                                     
+047900     MOVE BD-START-REC (SUB1) TO DFKEY.                                       
+048000     PERFORM READ-DESC-FILE.                                                  
+048100     MOVE DF-WORD (3) TO TEXTBASE.                                            
+048200     SET DFWIX TO 1.                                                          
+048300     MOVE STR-PROP-WORD (STRIX) TO ANUMBER.                                   
+048400     PERFORM GET-NEXT-WORD ANUMBER TIMES.                                     
+048500***      DFWIX APUNTA AHORA AL COMIENZO DE LA ESTRUCTURA PROPS.               
+048600     MOVE LOW-VALUES TO PROPERTIES-AREA.                                      
+048700     SET PWRDIX TO 1.                                                         
+048800     PERFORM MOVE-PROPERTY-WORD                                               
+048900        UNTIL PWRDIX > 35.                                                    
+049000* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+049100*  ESCRIBE INFORMACION SOBRE LOS ATRIBUTOS FISICOS DEL DATA SET  *            
+049200*  AL ARCHIVO WORK FILE.                                         *            
+049300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+049400 PROCESS-DATASET-PROPERTIES.                                                  
+049500     MOVE PROP-WORD (3) TO NAMELEN [47:07:08].                                
+049600     MOVE SPACES TO CHAR-STRING-AREA.                                         
+049700     SET CHARIX TO 1.                                                         
+049800     SET PCHRIX TO 14.                                                        
+049900     PERFORM MOVE-IDENTIFIER-CHAR                                             
+050000        UNTIL CHARIX > NAMELEN.                                               
+050100     MOVE LOW-VALUES TO INFO-REC.                                             
+050200     MOVE CHAR-STRING-AREA TO IR-DATASET-NAME.                                
+050300     MOVE 0 TO ANUMBER.                                                       
+050400     MOVE PROP-WORD (12) TO ANUMBER [11:11:12].                               
+050500**           (RECORDSZ--RECORDS SIZE EN PALABRAS (6 BYTES))                   
+050600     MOVE ANUMBER TO IR-RECSIZEINWORDS.                                       
+050700     MOVE PROP-WORD (6) TO ANUMBER [11:11:12].                                
+050800**           (BLOCKSZ--BLOCK SIZE IN RECS)                                    
+050900     MOVE ANUMBER TO IR-BLKSIZEINRECS.                                        
+051000     PERFORM CONSTRUCT-PHYSICAL-FILETITLE.                                    
+051100     MOVE 0 TO ANUMBER IR-AREAS-ALLOWED.                                      
+051200     MOVE PROP-WORD (7) TO ANUMBER [11:11:12].                                
+051300**           (NUMROWS)                                                        
+051400     ADD ANUMBER TO IR-AREAS-ALLOWED.                                         
+051500     MOVE 0 TO ANUMBER.                                                       
+051600     MOVE PROP-WORD (31) TO ANUMBER [47:19:20]                                
+051700**           (NUMROWSEXTRA)                                                   
+051800     ADD ANUMBER TO IR-AREAS-ALLOWED.                                         
+051900     MOVE 0 TO ANUMBER.                                                       
+052000     MOVE PROP-WORD (8) TO ANUMBER [27:27:28].                                
+052100**           (POPULATIONF)                                                    
+052200     MOVE ANUMBER TO IR-POPULATION.                                           
+052300     MOVE 0 TO ANUMBER.                                                       
+052400     SET IR-STRUCTURE-NUM TO STRIX.                                           
+052500     WRITE INFO-REC                                                           
+052600          INVALID KEY                                                         
+052700               DISPLAY "WORK FILE IS FULL"                                    
+052800               COMPUTE ANUMBER = ANUMBER / 0.                                 
+052900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+053000 CONSTRUCT-PHYSICAL-FILETITLE.                                                
+053100     MOVE 0 TO WS-HYPHEN-CNT.                                                 
+053200     INSPECT DBNAME                                                           
+053300       TALLYING WS-HYPHEN-CNT FOR ALL "-".                                    
+053400     MOVE SPACES TO FILE-TITLE.                                               
+053500     SET FTCIX TO 1.                                                          
+053600     IF WS-HYPHEN-CNT > 0                                                     
+053700         MOVE """" TO FT-CHAR (FTCIX)                                         
+053800         SET FTCIX UP BY 1.                                                   
+053900     PERFORM MOVE-DBNAME-CHAR                                                 
+054000         VARYING DBCIX FROM 1 BY 1                                            
+054100            UNTIL DBCIX > DBNAME-LEN.                                         
+054200     IF WS-HYPHEN-CNT > 0                                                     
+054300         MOVE """" TO FT-CHAR (FTCIX)                                         
+054400         SET FTCIX UP BY 1.                                                   
+054500     MOVE "/" TO FT-CHAR (FTCIX).                                             
+054600     SET FTCIX UP BY 1.                                                       
+054700     PERFORM FIND-DATASET-FILEID.                                             
+054800     MOVE 0 TO WS-HYPHEN-CNT.                                                 
+054900     INSPECT IR-DATASET-NAME                                                  
+055000       TALLYING WS-HYPHEN-CNT FOR ALL "-".                                    
+055100     MOVE 0 TO STRING-END.                                                    
+055200     IF WS-HYPHEN-CNT > 0                                                     
+055300        MOVE """" TO FT-CHAR (FTCIX)                                          
+055400        SET FTCIX UP BY 1.                                                    
+055500     PERFORM MOVE-FILEID-CHAR                                                 
+055600        UNTIL STRING-END = 1.                                                 
+055700     PERFORM MOVE-ON-LITERAL                                                  
+055800        VARYING OLCIX FROM 1 BY 1                                             
+055900           UNTIL OLCIX > 4.                                                   
+056000     PERFORM FIND-DATASET-PACKNAME.                                           
+056100     MOVE 0 TO STRING-END.                                                    
+056200     PERFORM MOVE-PACKNAME-CHAR                                               
+056300        UNTIL STRING-END = 1.                                                 
+056400     MOVE FILE-TITLE TO IR-DATASET-TITLE.                                     
+056500* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+056600 MOVE-DBNAME-CHAR.                                                            
+056700     MOVE DBNAME-CHAR (DBCIX) TO FT-CHAR (FTCIX).                             
+056800     SET FTCIX UP BY 1.                                                       
+056900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+057000 MOVE-ON-LITERAL.                                                             
+057100     MOVE OL-CHAR (OLCIX) TO FT-CHAR (FTCIX).                                 
+057200     SET FTCIX UP BY 1.                                                       
+057300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+057400 MOVE-FILEID-CHAR.                                                            
+057500     IF DF-CHAR (DFCIX) = "/"                                                 
+057600         IF WS-HYPHEN-CNT > 0                                                 
+057700             MOVE """" TO FT-CHAR (FTCIX)                                     
+057800             SET FTCIX UP BY 1.                                               
+057900     IF DF-CHAR (DFCIX) = """"                                                
+058000         NEXT SENTENCE                                                        
+058100     ELSE                                                                     
+058200         IF DF-CHAR (DFCIX) = "."                                             
+058300             MOVE 1 TO STRING-END                                             
+058400         ELSE                                                                 
+058500             MOVE DF-CHAR (DFCIX) TO FT-CHAR (FTCIX)                          
+058600             SET FTCIX UP BY 1.                                               
+058700     SET DFCIX UP BY 1.                                                       
+058800     IF DFCIX > 1536                                                          
+058900         ADD 1 TO DFKEY                                                       
+059000         PERFORM READ-DESC-FILE                                               
+059100         SET DFCIX TO 1.                                                      
+059200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+059300 MOVE-PACKNAME-CHAR.                                                          
+059400     IF DF-CHAR (DFCIX) = """"                                                
+059500         NEXT SENTENCE                                                        
+059600     ELSE                                                                     
+059700         IF DF-CHAR (DFCIX) = "."                                             
+059800             MOVE DF-CHAR (DFCIX) TO FT-CHAR (FTCIX)                          
+059900             MOVE 1 TO STRING-END                                             
+060000         ELSE                                                                 
+060100             MOVE DF-CHAR (DFCIX) TO FT-CHAR (FTCIX)                          
+060200             SET FTCIX UP BY 1.                                               
+060300     SET DFCIX UP BY 1.                                                       
+060400     IF DFCIX > 1536                                                          
+060500         ADD 1 TO DFKEY                                                       
+060600         PERFORM READ-DESC-FILE                                               
+060700         SET DFCIX TO 1.                                                      
+060800$PAGE                                                                         
+060900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+061000*  RECUPERA EL NUMBRE DE ARCHIVO Y DE FAMILIA DESDE LA PORCION DE*            
+061100*  TEXTO DEL ARCHIVO DE DESCRIPTION                              *            
+061200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+061300 FIND-DATASET-FILEID.                                                         
+061400     MOVE BD-START-REC (SUB1) TO DFKEY.                                       
+061500     PERFORM READ-DESC-FILE.                                                  
+061600     SET DFWIX TO 1.                                                          
+061700     PERFORM GET-NEXT-WORD  TEXTBASE TIMES.                                   
+061800     MOVE PROP-WORD (10) TO TEXTOFFSET [47:15:16].                            
+061900     PERFORM GET-NEXT-WORD  TEXTOFFSET TIMES.                                 
+062000     SET TEXTOFFSET TO DFWIX.                                                 
+062100     COMPUTE                                                                  
+062200       TEXTOFFSET = (((TEXTOFFSET - 1) * 6) + 1).                             
+062300     SET DFCIX TO TEXTOFFSET.                                                 
+062400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+062500 FIND-DATASET-PACKNAME.                                                       
+062600     MOVE BD-START-REC (SUB1) TO DFKEY.                                       
+062700     PERFORM READ-DESC-FILE.                                                  
+062800     SET DFWIX TO 1.                                                          
+062900     PERFORM GET-NEXT-WORD  TEXTBASE  TIMES.                                  
+063000     MOVE PROP-WORD (10) TO TEXTOFFSET [31:15:16].                            
+063100     PERFORM GET-NEXT-WORD  TEXTOFFSET  TIMES.                                
+063200     SET TEXTOFFSET TO DFWIX.                                                 
+063300     COMPUTE                                                                  
+063400       TEXTOFFSET = (((TEXTOFFSET - 1) * 6) + 1).                             
+063500     SET DFCIX TO TEXTOFFSET.                                                 
+063600$PAGE                                                                         
+063700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+063800*  EL WORK FILE CONTIENE AHORA UN REGISTRO POR DATA SET EXTANDARD*            
+063900*  Y ESTA ALMACENADO EN ORDEN ALFABETICO POR FILEID. SE CHEQUEA  *            
+064000*  LA RESIDENCIA DEL ARCHIVO FISICO EN DISCO. SI EL ARCHIVO ESTA *            
+064100*  RESIDENTE, ESTE SE ABRE Y SE IMPRIME UNA LINEA EN EL REPORTE. *            
+064200* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+064300 PRODUCE-REPORT-SECTION.                                                      
+064400     OPEN INPUT INFOFILE.                                                     
+064500     OPEN OUTPUT PRINT.                                                       
+064600     READ INFOFILE                                                            
+064700        AT END MOVE 1 TO EOF.                                                 
+064800     ACCEPT HD1-DATE FROM TODAYS-DATE.                                        
+064900     ACCEPT WS-TIME FROM TIME.                                                
+065000     MOVE HH-T     TO HD1-TIME.                                               
+065100     MOVE MM-T     TO HD1-MIN                                                 
+065200     MOVE SS-T     TO HD1-SEG                                                 
+065300     PERFORM HEADING-ROUTINE.                                                 
+065400     PERFORM PROCESS-INFO-RECORD                                              
+065500        UNTIL EOF = 1.                                                        
+065600     PERFORM TRAILING-ROUTINE.                                                
+065700     CLOSE PRINT.                                                             
+065800     CLOSE INFOFILE WITH PURGE.                                               
+065900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+066000 PROCESS-INFO-RECORD.                                                         
+066100     SET DATASET (TITLE) TO IR-DATASET-TITLE.                                 
+066200*    DISPLAY "IR-DATASET-TITLE:" IR-DATASET-TITLE                             
+066300     SET DATASET (FILEUSE) TO VALUE IN.                                       
+066400***  IF ATTRIBUTE RESIDENT OF DATASET = VALUE TRUE                            
+066500         PERFORM PROCESS-LASTRECORD.                                          
+066600     READ INFOFILE                                                            
+066700         AT END MOVE 1 TO EOF.                                                
+066800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+066900*  TODOS LOS DATOS QUE NECESITAMOS PARA LOS CALCULOS SE ENCUENTRA*            
+067000*  EN EL ARCHIVO WORK FILE Y EN EL ULTIMO SEGMENTO (F.LASTRECORD)*            
+067100*  DEL DATA SET.                                                 *            
+067200***NOTA: SI LA BASE DE DATOS HA PERMANECIDO ACTIVA PARA UPDATE   *            
+067300*   SIN HABER ESCRITO LOS BUFFERS A DISC, OBTENDREMOS YA SEA     *            
+067400*  RESULTADOS INCORRECTOS O UN INTEGER OVERFLOW. ESTO OCURRIRA   *            
+067500*  MUY RARAMENTE, Y SI OCURRE, C'EST LA VIE.                     *            
+067600*  EN CUALQUIER CASO NO SE LE HARA NINGUN DANO A LA BASE DE DATOS*            
+067700* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
+067800 PROCESS-LASTRECORD.                                                          
+067900     IF LN-CNT > MAXLINES                                                     
+068000         PERFORM HEADING-ROUTINE.                                             
+068100     MOVE SPACES TO PRT-LN.                                                   
+068200     OPEN INPUT DATASET.                                                      
+068300     MOVE IR-DATASET-NAME TO P-DATASET-NAME.                                  
+068400     MOVE IR-STRUCTURE-NUM TO P-STRUCTURE-NUM.                                
+068500     MOVE ATTRIBUTE LASTRECORD OF DATASET                                     
+068600          TO LASTREC.                                                         
+068700     ADD 1 TO LASTREC.                                                        
+068800     MOVE ATTRIBUTE AREASIZE OF DATASET                                       
+068900          TO WS-AREASIZE.                                                     
+069000     DIVIDE LASTREC BY WS-AREASIZE                                            
+069100        GIVING WS-AREAS  REMAINDER REMN.                                      
+069200     IF REMN > 0                                                              
+069300         ADD 1 TO WS-AREAS.                                                   
+069400     COMPUTE P-SECTORS = WS-AREAS * WS-AREASIZE.                              
+069500     COMPUTE WS-TOTAL-SECTORS =                                               
+069600             WS-TOTAL-SECTORS + WS-AREAS * WS-AREASIZE.                       
+069700     MOVE IR-AREAS-ALLOWED TO P-AREAS-ALLOWED.                                
+069800     MOVE WS-AREAS TO P-AREAS-INUSE.                                          
+069900     COMPUTE P-AREAS-PCENT =                                                  
+070000         WS-AREAS / IR-AREAS-ALLOWED * 100.                                   
+070020     COMPUTE WS-AREAS-PCENT =                                                 
+070040         WS-AREAS / IR-AREAS-ALLOWED * 100.                                   
+070100     READ DATASET                                                             
+070200         INVALID KEY                                                          
+070300             COMPUTE LASTREC = LASTREC / 0.                                   
+070400*AAM COMPUTE DELETEDRECS = DKNUM * 29 + DKI.                                  
+070500     MOVE DATAEOF TO FULLSEGS [47:27:28].                                     
+070600     MOVE DATAEOF TO LASTSEG  [15:15:16].                                     
+070700     COMPUTE NUMBLOCKS =                                                      
+070800          IR-BLKSIZEINRECS * IR-RECSIZEINWORDS + 2.                           
+070900     DIVIDE NUMBLOCKS BY 30                                                   
+071000          GIVING NUMBLOCKS REMAINDER REMN.                                    
+071100     IF REMN > 0                                                              
+071200        ADD 1 TO NUMBLOCKS.                                                   
+071300     COMPUTE NUMBLOCKS = FULLSEGS / NUMBLOCKS.                                
+071400     COMPUTE ACTIVERECS =                                                     
+071500         ((NUMBLOCKS * IR-BLKSIZEINRECS)                                      
+071600         + (LASTSEG / IR-RECSIZEINWORDS)                                      
+071700                                        - 1).                                 
+071800     MOVE ACTIVERECS  TO P-RECS-ALLOCATED.                                    
+071900     IF DELETEDRECS > ACTIVERECS                                              
+072000        MOVE ACTIVERECS TO DELETEDRECS.                                       
+072100     MOVE DELETEDRECS TO P-RECS-DELETED.                                      
+072200     IF ACTIVERECS > 0                                                        
+072300         COMPUTE P-DELETED-PCENT =                                            
+072400            DELETEDRECS / ACTIVERECS * 100.                                   
+072500     COMPUTE P-RECS-ACTIVE    = ACTIVERECS - DELETEDRECS.                     
+072600     COMPUTE WS-ACTIVE        = ACTIVERECS - DELETEDRECS.                     
+072700     COMPUTE WS-TOTAL-RECORDS = WS-TOTAL-RECORDS + WS-ACTIVE.                 
+072800     MOVE IR-POPULATION TO P-DASDL-POPULATION.                                
+072820*%%%%  INVESTIGACION                                                          
+072830     MOVE IR-POPULATION       TO PASO                                         
+072840     MOVE BD-START-REC (BDIX) TO PASO1                                        
+072850*AAM DISPLAY "POP ,NUM " PASO, PASO1.                                         
+072870*%%%%                                                                         
+072900     COMPUTE P-DASDL-SATURACION = ((ACTIVERECS - DELETEDRECS) /               
+073000                                   IR-POPULATION) * 100.                      
+073100     COMPUTE WS-SATURACION = ((ACTIVERECS - DELETEDRECS) /                    
+073200                               IR-POPULATION) * 100.                          
+073300*AAM IF WS-SATURACION > 80 THEN                                               
+073350     IF WS-AREAS-PCENT > 81 THEN                                              
+073400        MOVE "* OJO POPULATION *" TO P-FAMILY-NAME                            
+073500     ELSE                                                                     
+073600        MOVE "                  " TO P-FAMILY-NAME.                           
+073700     WRITE PRT-LN BEFORE 2.                                                   
+073800     ADD 2 TO LN-CNT.                                                         
+073900     CLOSE DATASET WITH RELEASE.                                              
+074000$PAGE                                                                         
+074100 HEADING-ROUTINE.                                                             
+074200     ADD 1 TO PG-CNT.                                                         
+074300     MOVE PG-CNT TO HD2-PG-NO.                                                
+074400     MOVE SPACES TO PRT-LN.                                                   
+074500     WRITE PRT-LN BEFORE PAGE.                                                
+074600     WRITE PRT-LN FROM HD1 BEFORE 1.                                          
+074700     WRITE PRT-LN FROM HD2 BEFORE 1.                                          
+074800     WRITE PRT-LN FROM HD3 BEFORE 1.                                          
+074900     WRITE PRT-LN FROM HD4 BEFORE 1.                                          
+075000     WRITE PRT-LN FROM HD5 BEFORE 2.                                          
+075100     MOVE 0 TO LN-CNT.                                                        
+075200 TRAILING-ROUTINE.                                                            
+075300     MOVE SPACES TO PRT-LN.                                                   
+075400     MOVE WS-TOTAL-SECTORS TO TR2-TOTAL-SECTORS.                              
+075500     MOVE WS-TOTAL-RECORDS TO TR2-TOTAL-RECORDS.                              
+075600     WRITE PRT-LN FROM TR1 BEFORE 1.                                          
+075700     WRITE PRT-LN FROM TR2 BEFORE 1.                                          
