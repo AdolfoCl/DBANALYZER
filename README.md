@@ -35,5 +35,5 @@ AGINS             31                          1,007     127        1   0.7      
 
 ## Credits
 Adapted from **GREGORY'S A-SERIES TECHNICAL JOURNAL**
-VOLUME 2, NUMBER 7      AUGOST, 1988
+VOLUME 2, NUMBER 7      AUGUST, 1988
 PAGE 261  **"EXPLORING DMSII WITH COBOL"**
