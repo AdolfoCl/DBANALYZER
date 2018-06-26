@@ -1,4 +1,4 @@
-000100$SET LIST SINGLE ERRORLIST MAP SET BINARYCOMP                                 
+000100$SET LIST SINGLE ERRORLIST MAP SET BINARYCOMP TADS                AD180620    
 000200$LIST FEDLEVEL=5 ERRORLIMIT=999                                               
 000300 IDENTIFICATION DIVISION.                                                     
 000400 PROGRAM-ID. SDSANAL.                                                         
@@ -121,7 +121,7 @@
 012200     02  P-RECS-DELETED           PIC ZZZ,ZZZ,ZZ9.                            
 012300     02  P-DELETED-PCENT          PIC ZZZ9.9.                                 
 012400     02  P-RECS-ACTIVE            PIC ZZZZ,ZZZ,ZZ9.                           
-012500     02  P-DASDL-POPULATION       PIC ZZZZZ,ZZZ,ZZ9.                          
+012500     02  P-DASDL-POPULATION       PIC ZZZZZ,ZZZ,ZZZ.                          
 012600     02  P-DASDL-SATURACION       PIC ZZ9.9.                                  
 012700*****02  FILLER                   PIC X(01).                                  
 012800$PAGE                                                                         
@@ -133,6 +133,8 @@
 013300 77  LN-CNT                       PIC  9(04) BINARY.                          
 013400 77  MAXLINES                     PIC  9(04) BINARY VALUE 78.                 
 013500 77  EOF                          PIC  9     BINARY.                          
+013520 77  SW-FIN-PRT                   PIC  9     BINARY VALUE  0.                 
+013540     88 FIN-PRT                                     VALUE  1.                 
 013600 77  NUMBLOCKS                    PIC S9(11) BINARY EXTENDED.                 
 013700 77  FULLSEGS                     PIC S9(11) BINARY EXTENDED.                 
 013800 77  LASTSEG                      PIC S9(11) BINARY EXTENDED.                 
@@ -174,7 +176,7 @@
 017200*                  TABLA DE DIRECTORIO DE BLOQUES                *            
 017300* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
 017400 01  BLOCK-DIRECTORY-TABLE.                                                   
-017500     02  BD-ENTRY                 OCCURS 500 TIMES                            
+017500     02  BD-ENTRY                 OCCURS 750 TIMES                            
 017600                                  INDEXED BY BDIX.                            
 017700         03  BD-START-REC         PIC 9(04) COMP.                             
 017800* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
@@ -182,7 +184,7 @@
 018000*   ESTRUCTURAS.                                                 *            
 018100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
 018200 01  STRUCTURE-TABLE.                                                         
-018300     02  STRUCTURE-INFO           OCCURS 1 TO 1000 TIMES                      
+018300     02  STRUCTURE-INFO           OCCURS 1 TO 1500 TIMES                      
 018400                                  DEPENDING ON STR-COUNT                      
 018500                                  INDEXED BY STRIX.                           
 018600         03  STR-PROP-BLOCK       PIC 9(04) COMP.                             
@@ -192,11 +194,11 @@
 019000*         AREA DE PARSING PARA LAS PROPERTIES                    *            
 019100* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
 019200 01  PROPERTIES-AREA.                                                         
-019300     02  PROP-WORD                OCCURS  40 TIMES                            
+019300     02  PROP-WORD                OCCURS  256 TIMES               AD180622    
 019400                                  INDEXED BY PWRDIX                           
 019500                                  PIC S9(11) BINARY EXTENDED.                 
 019600 01  PROPERTY-CHARACTERS REDEFINES PROPERTIES-AREA.                           
-019700     02  PROP-CHAR                OCCURS 240 TIMES                            
+019700     02  PROP-CHAR                OCCURS 270 TIMES                            
 019800                                  INDEXED BY PCHRIX                           
 019900                                  PIC X(01).                                  
 020000* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
@@ -372,7 +374,7 @@
 037000***      AHORA DFWIX APUNTA A LA PRIMERA PALABRA DE LAS DB PROPS              
 037100     SET PWRDIX TO 1.                                                         
 037200     PERFORM MOVE-PROPERTY-WORD                                               
-037300        UNTIL PWRDIX > 20.                                                    
+037300        UNTIL PWRDIX > 80.                                        AD180622    
 037400* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
 037500*  MUEVE UN CONJUNTO DE PROPIEDADES EN EL AREA DE TRABAJO, UNA   *            
 037600*  PALABRA POR VEZ                                               *            
@@ -488,7 +490,7 @@
 048600     MOVE LOW-VALUES TO PROPERTIES-AREA.                                      
 048700     SET PWRDIX TO 1.                                                         
 048800     PERFORM MOVE-PROPERTY-WORD                                               
-048900        UNTIL PWRDIX > 35.                                                    
+048900        UNTIL PWRDIX > 80.                                        AD180622    
 049000* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
 049100*  ESCRIBE INFORMACION SOBRE LOS ATRIBUTOS FISICOS DEL DATA SET  *            
 049200*  AL ARCHIVO WORK FILE.                                         *            
@@ -519,7 +521,8 @@
 051700**           (NUMROWSEXTRA)                                                   
 051800     ADD ANUMBER TO IR-AREAS-ALLOWED.                                         
 051900     MOVE 0 TO ANUMBER.                                                       
-052000     MOVE PROP-WORD (8) TO ANUMBER [27:27:28].                                
+052000     MOVE PROP-WORD (46) TO ANUMBER                               AD180622    
+052050*    [27:27:28].                                                              
 052100**           (POPULATIONF)                                                    
 052200     MOVE ANUMBER TO IR-POPULATION.                                           
 052300     MOVE 0 TO ANUMBER.                                                       
@@ -656,6 +659,9 @@
 065400     PERFORM PROCESS-INFO-RECORD                                              
 065500        UNTIL EOF = 1.                                                        
 065600     PERFORM TRAILING-ROUTINE.                                                
+065650*    IF NOT FIN-PRT                                                           
+065670*       CLOSE PRINT                                                           
+065690*       OPEN OUTPUT PRINT.                                                    
 065700     CLOSE PRINT.                                                             
 065800     CLOSE INFOFILE WITH PURGE.                                               
 065900* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*            
@@ -729,22 +735,24 @@
 072500     COMPUTE P-RECS-ACTIVE    = ACTIVERECS - DELETEDRECS.                     
 072600     COMPUTE WS-ACTIVE        = ACTIVERECS - DELETEDRECS.                     
 072700     COMPUTE WS-TOTAL-RECORDS = WS-TOTAL-RECORDS + WS-ACTIVE.                 
-072800     MOVE IR-POPULATION TO P-DASDL-POPULATION.                                
+072800     MOVE IR-POPULATION TO P-DASDL-POPULATION.                    AD180622    
+072810*    MOVE 0             TO P-DASDL-POPULATION.                    AD180622    
 072820*%%%%  INVESTIGACION                                                          
-072830     MOVE IR-POPULATION       TO PASO                                         
-072840     MOVE BD-START-REC (BDIX) TO PASO1                                        
+072830*    MOVE IR-POPULATION       TO PASO                                         
+072840*    MOVE BD-START-REC (BDIX) TO PASO1                                        
 072850*AAM DISPLAY "POP ,NUM " PASO, PASO1.                                         
 072870*%%%%                                                                         
-072900     COMPUTE P-DASDL-SATURACION = ((ACTIVERECS - DELETEDRECS) /               
-073000                                   IR-POPULATION) * 100.                      
-073100     COMPUTE WS-SATURACION = ((ACTIVERECS - DELETEDRECS) /                    
-073200                               IR-POPULATION) * 100.                          
-073300*AAM IF WS-SATURACION > 80 THEN                                               
-073350     IF WS-AREAS-PCENT > 81 THEN                                              
+072900*    COMPUTE P-DASDL-SATURACION = ((ACTIVERECS - DELETEDRECS) /               
+073000*                                  IR-POPULATION) * 100.                      
+073100*    COMPUTE WS-SATURACION = ((ACTIVERECS - DELETEDRECS) /                    
+073200*                              IR-POPULATION) * 100.                          
+073300*AAM IF WS-SATURACION  > 80 THEN                                              
+073350     IF WS-AREAS-PCENT > 85 THEN                                              
 073400        MOVE "* OJO POPULATION *" TO P-FAMILY-NAME                            
 073500     ELSE                                                                     
 073600        MOVE "                  " TO P-FAMILY-NAME.                           
-073700     WRITE PRT-LN BEFORE 2.                                                   
+073650     MOVE WS-AREAS-PCENT  TO P-DASDL-SATURACION                               
+073700     WRITE PRT-LN BEFORE 2                                                    
 073800     ADD 2 TO LN-CNT.                                                         
 073900     CLOSE DATASET WITH RELEASE.                                              
 074000$PAGE                                                                         
