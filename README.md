@@ -8,7 +8,7 @@ It generates a printed report showing the active and deleted records and the use
 
 From CANDE: 
 ```
-C SYMBOL/DBANALYZER AS DBANALYZER WITH DMALGOL
+C SYMBOL/DBANALYZER AS DBANALYZER WITH COBOL85
 ```
 
 ## How to run
