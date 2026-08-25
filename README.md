@@ -1,45 +1,53 @@
 # DBANALYZER
 
-How much disk is your DMSII database actually using, how much of it is dead,
-and how far are the structures from the size they were declared for.
+Which structure in your DMSII database is going to stop it, and how long you
+have before it does.
 
-DMSII does not answer those questions. A data set is sized ahead of time from
-the population you estimated in the DASDL, and from then on the estimate and the
-reality drift apart quietly. Records get deleted and their space stays put.
-A data set declared for ten million rows holds three thousand, and its areas sit
-preallocated on the pack anyway. Nothing in the application ever mentions it,
-because the application is asking about records, not about sectors.
+A data set that fills the space its declared population allowed for does not
+slow down and it does not warn you. It fails. The database stops, and it stays
+stopped until somebody reorganises that structure to give it more room — which
+is not a five-minute job, and never happens at a convenient hour.
 
-This program prints the answer for every standard data set in the database, on
-one page.
+The number that predicts it is sitting in the description file the whole time.
+Nobody looks, because DMSII does not put it anywhere you would see it: the
+application asks about records, not about how much of the structure is left.
 
-## What the report says
+This program prints it for every standard data set, on one page.
+
+## The column to read first
 
 ```
 DATA SET NAME    NUM   FAMILY NAME        (SECTORS)   ALLOWED  IN USE   %    ALLOCATED    DELETED    %      RECORDS       POPUL.   SAT
 CUSTOMER           5   DBPACK01             24,120     340       24   7.1      41,880      1,204    2.9       40,676      500,000   8.1
 ```
 
+**`% SAT`** — active records against the population declared in the DASDL. At
+100 % the structure is out of room and the database goes down with it. Watch
+anything climbing through the eighties: that is the reorganisation you want to
+schedule for a Sunday rather than have forced on you on a Tuesday. Compare two
+runs a month apart and the slope tells you how many months are left.
+
+The rest of the report is what you look at once you are not on fire:
+
 | Column | Reading it |
 |---|---|
 | `FILE SIZE (SECTORS)` | What the structure occupies on the pack. A sector is 180 bytes. |
-| `AREAS ALLOWED / IN USE` | Areas are preallocated extents. Allowed is the ceiling set in the DASDL; in use is how many exist. A low percentage means the ceiling was set generously. |
-| `RECORD SPACES ALLOCATED / DELETED` | Slots created, and slots freed. Deleted space stays with the structure — a reorganisation is what gives it back. A high percentage here is dead weight you are backing up every night. |
+| `AREAS ALLOWED / IN USE` | Areas are preallocated extents. Allowed is the ceiling; in use is how many exist. |
+| `RECORD SPACES ALLOCATED / DELETED` | Slots created, and slots freed. Deleted space stays with the structure — a reorganisation is what gives it back. A high percentage is dead weight you are backing up every night. |
 | `ACTIVE RECORDS` | Allocated minus deleted. What is really there. |
-| `DASDL POPUL.` | The estimate declared in the DASDL, which is what the sizing was based on. |
-| `% SAT` | Active against that estimate. Near zero means the structure was sized for a future that never came. Near a hundred means the future arrived and nobody noticed. |
+| `DASDL POPUL.` | The estimate the sizing was based on. Often written years ago by someone who has left. |
 
-Run it before a migration and you know what you are actually moving, as opposed
-to what the DASDL says you might be. Run it once a year and you know which
-structures are worth reorganising.
+A structure at 3 % saturation is the opposite problem and worth knowing too: it
+was sized for a future that never came, and its areas are sitting on the pack
+regardless.
 
 ## It never opens the database
 
 The input is the **description file**, not the database. The program walks the
 structure list inside it — the same internal layout the Gregory's article
 described — so it takes no locks, needs no window, and cannot disturb anything
-that is running. On a production machine that distinction is the whole reason it
-is usable.
+that is running. On a production machine that is the whole reason it is usable:
+you can run it at any hour, as often as you like, and nobody notices.
 
 ## How to compile
 
@@ -86,15 +94,18 @@ EMPLOYEE          40   DBPACK01              2,016      64        2   3.1       
 AUDIT-EVENT       45   DBPACK01             60,480     850       60   7.1     155,203          0    0.0      155,203    3,000,000   5.2
 ```
 
+`GLOBALS` sits at 100 % by construction — the global data set holds exactly one
+record and is declared for one. Every other structure at 100 % is a problem.
+
 ## Related
 
 [SDSANALYZER](https://github.com/AdolfoCl/SDSANALYZER) prints the same inventory
-as XML instead, which opens straight into Excel when you want to sort and filter
-it.
+as XML instead, which opens straight into Excel — useful when you want to sort
+by saturation, or keep a monthly history and watch the slope.
 
 [dmsii-to-mariadb](https://github.com/AdolfoCl/dmsii-to-mariadb) is the other
-half of knowing a DMSII database: this one tells you how big it is, that one
-tells you what shape it has, by compiling the DASDL into a relational schema.
+half of knowing a DMSII database: this one tells you how much room is left, that
+one tells you what shape it has, by compiling the DASDL into a relational schema.
 
 ## Credits
 
