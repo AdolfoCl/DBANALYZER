@@ -1,12 +1,50 @@
 # DBANALYZER
 
-## STANDARD DATA SET ANALYSIS REPORT
+How much disk is your DMSII database actually using, how much of it is dead,
+and how far are the structures from the size they were declared for.
 
-It generates a printed report showing the active and deleted records and the use of disk space for all standard data sets in a DMSII database of the UNISYS MCP Operating System.
- 
+DMSII does not answer those questions. A data set is sized ahead of time from
+the population you estimated in the DASDL, and from then on the estimate and the
+reality drift apart quietly. Records get deleted and their space stays put.
+A data set declared for ten million rows holds three thousand, and its areas sit
+preallocated on the pack anyway. Nothing in the application ever mentions it,
+because the application is asking about records, not about sectors.
+
+This program prints the answer for every standard data set in the database, on
+one page.
+
+## What the report says
+
+```
+DATA SET NAME    NUM   FAMILY NAME        (SECTORS)   ALLOWED  IN USE   %    ALLOCATED    DELETED    %      RECORDS       POPUL.   SAT
+CUSTOMER           5   DBPACK01             24,120     340       24   7.1      41,880      1,204    2.9       40,676      500,000   8.1
+```
+
+| Column | Reading it |
+|---|---|
+| `FILE SIZE (SECTORS)` | What the structure occupies on the pack. A sector is 180 bytes. |
+| `AREAS ALLOWED / IN USE` | Areas are preallocated extents. Allowed is the ceiling set in the DASDL; in use is how many exist. A low percentage means the ceiling was set generously. |
+| `RECORD SPACES ALLOCATED / DELETED` | Slots created, and slots freed. Deleted space stays with the structure — a reorganisation is what gives it back. A high percentage here is dead weight you are backing up every night. |
+| `ACTIVE RECORDS` | Allocated minus deleted. What is really there. |
+| `DASDL POPUL.` | The estimate declared in the DASDL, which is what the sizing was based on. |
+| `% SAT` | Active against that estimate. Near zero means the structure was sized for a future that never came. Near a hundred means the future arrived and nobody noticed. |
+
+Run it before a migration and you know what you are actually moving, as opposed
+to what the DASDL says you might be. Run it once a year and you know which
+structures are worth reorganising.
+
+## It never opens the database
+
+The input is the **description file**, not the database. The program walks the
+structure list inside it — the same internal layout the Gregory's article
+described — so it takes no locks, needs no window, and cannot disturb anything
+that is running. On a production machine that distinction is the whole reason it
+is usable.
+
 ## How to compile
 
-From CANDE: 
+From CANDE:
+
 ```
 C SYMBOL/DBANALYZER AS DBANALYZER WITH COBOL85
 ```
@@ -14,13 +52,16 @@ C SYMBOL/DBANALYZER AS DBANALYZER WITH COBOL85
 ## How to run
 
 From CANDE:
+
 ```
 RUN DBANALYZER;FILE DASDL(TITLE = <DESCRIPTION FILE TITLE>)
 ```
 
-## Results
-The following is the generated report format. The database below is made up:
-SAMPLEDB, with figures consistent with each other, to show the layout.
+## Sample output
+
+The database below is made up: SAMPLEDB, with figures consistent with each
+other, to show the layout.
+
 ```
 SDSANAL                                            * STANDARD DATASET ANALYSIS *                                 14/03/2025 09:22:41 
 DATA BASE:  SAMPLEDB             UPDATE LEVEL   7                                                                          PAGE   1 
@@ -45,7 +86,18 @@ EMPLOYEE          40   DBPACK01              2,016      64        2   3.1       
 AUDIT-EVENT       45   DBPACK01             60,480     850       60   7.1     155,203          0    0.0      155,203    3,000,000   5.2
 ```
 
+## Related
+
+[SDSANALYZER](https://github.com/AdolfoCl/SDSANALYZER) prints the same inventory
+as XML instead, which opens straight into Excel when you want to sort and filter
+it.
+
+[dmsii-to-mariadb](https://github.com/AdolfoCl/dmsii-to-mariadb) is the other
+half of knowing a DMSII database: this one tells you how big it is, that one
+tells you what shape it has, by compiling the DASDL into a relational schema.
+
 ## Credits
+
 Adapted from **GREGORY'S A-SERIES TECHNICAL JOURNAL**
-VOLUME 2, NUMBER 7      AUGUST, 1988
-PAGE 261  **"EXPLORING DMSII WITH COBOL"**
+VOLUME 2, NUMBER 7, AUGUST 1988
+PAGE 261, **"EXPLORING DMSII WITH COBOL"**
