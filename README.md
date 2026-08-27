@@ -112,3 +112,7 @@ one tells you what shape it has, by compiling the DASDL into a relational schema
 Adapted from **GREGORY'S A-SERIES TECHNICAL JOURNAL**
 VOLUME 2, NUMBER 7, AUGUST 1988
 PAGE 261, **"EXPLORING DMSII WITH COBOL"**
+
+## License
+
+MIT — see [LICENSE](LICENSE).
