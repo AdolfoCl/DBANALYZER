@@ -103,7 +103,7 @@ record and is declared for one. Every other structure at 100 % is a problem.
 as XML instead, which opens straight into Excel — useful when you want to sort
 by saturation, or keep a monthly history and watch the slope.
 
-[dmsii-to-mariadb](https://github.com/AdolfoCl/dmsii-to-mariadb) is the other
+[dmsii-to-sql](https://github.com/AdolfoCl/dmsii-to-sql) is the other
 half of knowing a DMSII database: this one tells you how much room is left, that
 one tells you what shape it has, by compiling the DASDL into a relational schema.
 
